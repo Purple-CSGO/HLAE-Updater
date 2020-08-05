@@ -247,9 +247,17 @@ func FormatPath(s string) string {
 func copyDir(from string, to string) error {
 	from = FormatPath(from)
 	to = FormatPath(to)
-	log.Println(from)
-	log.Println(to)
 
+	//确保目标路径存在，否则复制报错exit status 4
+	exist, err := isFileExisted(to)
+	if err != nil {
+		return err
+	} else if exist == false {
+		err := os.Mkdir(to, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
 	var cmd *exec.Cmd
 
 	switch runtime.GOOS {
@@ -259,12 +267,11 @@ func copyDir(from string, to string) error {
 		cmd = exec.Command("cp", "-R", from, to)
 	}
 
-	_, err := cmd.Output()
+	_, err = cmd.Output()
 	if err != nil {
-		log.Println(err)
 		return err
 	}
-	//fmt.Println(string(outPut))
+	//fmt.Println(string(output))
 	return nil
 }
 
@@ -387,7 +394,7 @@ func main() {
 
 	//1.读取settings.json，无则赋默认值，创建文件
 	Updater := &Setting{
-		Version:       "0.1.3",
+		Version:       "0.1.4",
 		LatestVersion: "",
 		LocalVersion:  "",
 		Url:           "",
@@ -524,16 +531,16 @@ func main() {
 
 	//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
 	fmt.Println("下载成功，正在解压...")
-	tempDir := "./temp/hlae/"
+	tempDir := "./temp/hlae"
 	os.RemoveAll(tempDir)
-	err = Unzip("./temp/"+Updater.FileName, "./temp/hlae/")
+	err = Unzip("./temp/"+Updater.FileName, tempDir)
 	if err != nil {
 		fmt.Println("解压失败")
 		log.Println(err)
 		pause()
 		os.Exit(10)
 	} else {
-		ok, err := isFileExisted(tempDir + "hlae.exe")
+		ok, err := isFileExisted(tempDir + "/hlae.exe")
 		if err != nil {
 			log.Println(err)
 			os.Exit(11)

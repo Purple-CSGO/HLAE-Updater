@@ -16,7 +16,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cavaliercoder/grab"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -120,6 +119,7 @@ func downloadFile(url string, location string) error {
 	}
 }
 
+//压缩
 func Zip(from string, toZip string) error {
 	zipfile, err := os.Create(toZip)
 	if err != nil {
@@ -167,6 +167,7 @@ func Zip(from string, toZip string) error {
 	return err
 }
 
+//解压
 func Unzip(zipFile string, to string) error {
 	zipReader, err := zip.OpenReader(zipFile)
 	if err != nil {
@@ -213,6 +214,7 @@ type Setting struct {
 	FileName      string
 	HlaeAPI       string
 	CdnAPI        string
+	HlaeExist     bool
 	//launchOption	string
 	//CsgoPath		string
 }
@@ -311,13 +313,14 @@ func main() {
 
 	//1.读取settings.json，无则赋默认值，创建文件
 	Updater := &Setting{
-		Version:       "0.1.1",
+		Version:       "0.1.2",
 		LatestVersion: "",
 		LocalVersion:  "",
 		Url:           "",
 		FileName:      "",
 		HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
 		CdnAPI:        "https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release@",
+		HlaeExist:     false,
 	}
 	//settings, err := readAll("./settings.json")
 	//if err != nil {
@@ -326,7 +329,7 @@ func main() {
 	//	//settings
 	//}
 	fmt.Println("=================================")
-	fmt.Println("HLAE Updater", Updater.Version)
+	fmt.Println("HLAE Updater -", Updater.Version)
 	fmt.Println("=================================")
 
 	//2.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
@@ -355,6 +358,7 @@ func main() {
 
 	//4.解析包含本地版本信息的XML文件"HLAE/changelog.xml"，获得当前版本
 	if exist == false {
+		Updater.HlaeExist = false
 		fmt.Println("检测到尚未给CSGO Demos Manager安装HLAE")
 	} else {
 		changelogPath := usr.HomeDir + "/AppData/Local/AkiVer/hlae/changelog.xml"
@@ -394,45 +398,93 @@ func main() {
 	}
 
 	//6.判断是否要下载/更新，是则利用CDN加速尝试下载HLAE-Release仓库的文件
-	res := strings.Compare(Updater.LatestVersion, Updater.LocalVersion)
-	if res == 0 {
-		fmt.Println("已是最新版本")
-		os.Exit(0)
-	} else if res < 0 {
-		fmt.Println("发生异常，本地版本号>最新版本号，请检查本地HLAE文件")
-		os.Exit(8)
-	}
-
-	cdnURL := Updater.CdnAPI + "/" + Updater.LatestVersion + "/" + Updater.FileName
-
-	generatePath := "./temp/"
-	resp, err := grab.Get(generatePath, cdnURL)
-	if err != nil {
-		fmt.Println("加速下载失败×")
-		log.Fatal(err)
-	} else {
-		fmt.Println(resp.Filename, " 已下载")
-		//解压文件
-		err = Unzip(generatePath+"hlae_2_102_0.zip", "./temp/"+Updater.LatestVersion)
-		if err != nil {
-			log.Fatal(err)
+	if Updater.HlaeExist == true {
+		res := strings.Compare(Updater.LatestVersion, Updater.LocalVersion)
+		if res == 0 {
+			fmt.Println("已是最新版本")
+			os.Exit(0)
+		} else if res < 0 {
+			fmt.Println("发生异常，本地版本号>最新版本号，请检查本地HLAE文件")
+			os.Exit(8)
 		}
 	}
 
-	//7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
-	//fmt.Println("请更新HLAE")
-	//fmt.Println("正在下载最新版本压缩包...")
-	//
-	//err := downloadFile(url, "./temp/")
+	///// 利用grab下载
+	//generatePath := "./temp/"
+	//resp, err := grab.Get(generatePath, cdnURL)
 	//if err != nil {
-	//
+	//	fmt.Println("加速下载失败×")
 	//	log.Fatal(err)
-	//	os.Exit(9)
 	//} else {
-	//fmt.Println("下载成功！")
+	//	fmt.Println(resp.Filename, " 已下载")
+	//	//解压文件
+	//	err = Unzip(generatePath+"hlae_2_102_0.zip", "./temp/"+Updater.LatestVersion)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
 	//}
+
+	fmt.Println("正在尝试加速下载...")
+	cdnURL := Updater.CdnAPI + "/" + Updater.LatestVersion + "/" + Updater.FileName
+	err = downloadFile(cdnURL, "./temp/")
+	if err != nil {
+		fmt.Println("加速下载失败")
+		log.Fatal(err)
+
+		//7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
+		fmt.Println("正在从GitHub原地址下载...")
+		err = downloadFile(Updater.Url, "./temp/")
+		if err != nil {
+			fmt.Println("原地址下载失败，请检查网络连接")
+			log.Fatal(err)
+			os.Exit(9)
+		}
+	}
+
 	//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
+	fmt.Println("下载成功，正在解压...")
+	tempDir := "./temp/hlae/"
+
+	err = Unzip(Updater.FileName, tempDir)
+	if err != nil {
+		fmt.Println("解压失败")
+		log.Fatal(err)
+	} else {
+		ok, err := isFileExisted(tempDir + "hlae.exe")
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(10)
+		} else if ok == false {
+			log.Fatal(errors.New("successfully unzipped but no file is found"))
+			os.Exit(10)
+		}
+	}
+
+	//移动，覆盖原目录
+	fmt.Println("解压成功，正在移动文件...")
+	err = os.Rename(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae/")
+	if err != nil {
+		fmt.Println("文件移动失败")
+		log.Fatal(err)
+		os.Exit(11)
+	}
 
 	//9.生成/更新"Version"文件，格式"2.102.0"
+	ver := strings.Replace(Updater.Version, "v", "", -1)
+	fmt.Println("正在生成版本文件：", ver)
+	err = writeFast(usr.HomeDir+"/AppData/Local/AkiVer/hlae/Version", ver)
+	if err != nil {
+		fmt.Println("版本文件生成失败")
+		log.Fatal(err)
+	} else {
+		fmt.Println("版本文件生成成功")
+	}
 
+	fmt.Println("=================================")
+	if Updater.HlaeExist == true {
+		fmt.Println("HLAE更新完成，当前版本号：", Updater.LatestVersion)
+	} else {
+		fmt.Println("HLAE安装完成，当前版本号：", Updater.LatestVersion)
+	}
+	fmt.Println("=================================")
 }

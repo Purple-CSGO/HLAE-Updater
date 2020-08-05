@@ -6,8 +6,8 @@ The easiest and fastest way to update your [hlae](https://github.com/advancedfx/
 
 # Schedule
 
-- [ ] Install and update hlae for [CSGO Demos Manager](https://github.com/akiver/CSGO-Demos-Manager).
-- [ ] Use CDN to speed up downloading in some areas like mainland China.
+- [x] Install and update hlae for [CSGO Demos Manager](https://github.com/akiver/CSGO-Demos-Manager).
+- [x] Use CDN to speed up downloading in some areas like mainland China.
 - [ ] Support Multiple languages.
 - [ ] Store and Load program settings.
 - [ ] Optional [FFMPEG](http://ffmpeg.org/) fast installing feature.

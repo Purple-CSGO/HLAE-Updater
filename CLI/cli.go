@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -280,29 +281,33 @@ type Setting struct {
 	Version       string
 	LatestVersion string
 	LocalVersion  string
+	FFmpegVersion string
 	Url           string
 	FileName      string
 	HlaeAPI       string
-	CdnAPI        string
-	HlaeExist     bool
+	API           string
+
+	FFmpegAPI string
+	HlaeExist bool
 	//launchOption	string
 	//CsgoPath		string
 }
+type Asset struct {
+	URL                string `json:"url"`
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	ContentType        string `json:"content_type"`
+	State              string `json:"state"`
+	Size               int    `json:"size"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+}
 
 type Latest struct {
-	URL     string `json:"url"`
-	TagName string `json:"tag_name"`
-	Name    string `json:"name"`
-	Message string `json:"message"`
-	Assets  []struct {
-		URL                string `json:"url"`
-		ID                 int    `json:"id"`
-		Name               string `json:"name"`
-		ContentType        string `json:"content_type"`
-		State              string `json:"state"`
-		Size               int    `json:"size"`
-		BrowserDownloadURL string `json:"browser_download_url"`
-	} `json:"assets"`
+	URL     string  `json:"url"`
+	TagName string  `json:"tag_name"`
+	Name    string  `json:"name"`
+	Message string  `json:"message"`
+	Assets  []Asset `json:"assets"`
 }
 
 type Changelog struct {
@@ -333,34 +338,99 @@ type Changelog struct {
 	H1 string `xml:"h1"`
 }
 
-///// important func
-//解析Json，获取最新版本号和下载地址
-func parseLatestInfo(jsonData string) (string, string, string, error) {
-	//初始化实例
-	var latestInst Latest
+type FFmpegTag struct {
+	Message    string `json:"message"`
+	Name       string `json:"name"`
+	ZipballURL string `json:"zipball_url"`
+	TarballURL string `json:"tarball_url"`
+	Commit     struct {
+		Sha string `json:"sha"`
+		URL string `json:"url"`
+	} `json:"commit"`
+	NodeID string `json:"node_id"`
+}
 
-	//注释下面一行->使用encoding/json库
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
-	err := json.Unmarshal([]byte(jsonData), &latestInst)    //第二个参数要地址传递
+///// important functions
+//解析Json，获取最新版本号和下载地址 return TagName, Asset Slice, nil
+func parseReleaseInfo(owner string, repo string) (string, []Asset, error) {
+	//GET请求获得JSON
+	jsonData, err := getHttpData("https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest")
 	if err != nil {
-		return "", "", "", err
+		log.Println(err)
+		return "", nil, err
+	}
+
+	//初始化实例并解析JSON
+	var latestInst Latest
+	err = json.Unmarshal([]byte(jsonData), &latestInst) //第二个参数要地址传递
+	if err != nil {
+		return "", nil, err
 	}
 
 	//链接有问题也会返回Json，且 "Message": "Not Found"
 	if latestInst.Message == "Not Found" {
-		return "", "", "", errors.New("got Json but no valid. Check URL")
+		return "", nil, errors.New("got Json but no valid. Check URL")
 	}
-	//打印附件信息
-	var url, fileName string
-	for _, file := range latestInst.Assets {
-		//过滤掉源码文件
-		if file.State == "uploaded" && !strings.Contains(file.Name, ".asc") && strings.Contains(file.Name, ".zip") {
-			url = file.BrowserDownloadURL
-			fileName = file.Name
+
+	return latestInst.TagName, latestInst.Assets, nil
+}
+
+func readSettings(path string) (Setting, error) {
+	//检查文件是否存在
+	exist, err := isFileExisted(path)
+	if err != nil {
+		return Setting{}, err
+	} else if exist == true {
+		//存在则读取文件
+		content, err := readAll(path)
+		if err != nil {
+			return Setting{}, err
+		}
+
+		//初始化实例并解析JSON
+		var settingInst Setting
+		err = json.Unmarshal([]byte(content), &settingInst) //第二个参数要地址传递
+		if err != nil {
+			return Setting{}, err
+		}
+		settingInst.Files = nil //清空API，防止累加
+
+		return settingInst, nil
+	} else {
+
+		return Setting{}, nil
+	}
+}
+
+func saveSettings(path string) error {
+	//检查文件是否存在
+	exist, err := isFileExisted(path)
+	if err != nil {
+		return err
+	} else if exist == true {
+		//存在则删除文件
+		ok, err := isFileExisted(path)
+		if err != nil {
+			return err
+		} else if ok == true {
+			err := os.Remove(path)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
-	return latestInst.TagName, url, fileName, nil
+	JsonData, err := json.Marshal(Updater) //第二个参数要地址传递
+	if err != nil {
+		return err
+	}
+
+	err = writeFast(path, string(JsonData))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func parseChangelog(xmlData string) (string, error) {
@@ -390,30 +460,64 @@ func generateVersion(version string, path string) {
 	}
 }
 
+func getFFmpegLatestVersion(jsonData string) (string, error) {
+	//初始化实例
+	var FFmpegInst []FFmpegTag
+
+	//注释下面一行->使用encoding/json库
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
+	err := json.Unmarshal([]byte(jsonData), &FFmpegInst)    //第二个参数要地址传递
+	if err != nil {
+		return "", err
+	}
+
+	//链接有问题也会返回Json，且 "Message": "Not Found"
+	if FFmpegInst[0].Message == "Not Found" {
+		return "", errors.New("got Json but no valid. Check URL")
+	}
+	//获得最新版本号
+	latestTag := ""
+	for _, tag := range FFmpegInst {
+		//过滤旧版本和开发版-dev
+		if !strings.Contains(tag.Name, "v") && !strings.Contains(tag.Name, "dev") && strings.Compare(tag.Name, latestTag) > 0 {
+			latestTag = tag.Name
+		}
+	}
+	//去除版本号开头的n
+	latestTag = strings.Replace(latestTag, "n", "", -1)
+	return latestTag, nil
+}
+
+///// 全局变量
+var Updater = &Setting{
+	Version:       "0.2.0",
+	LatestVersion: "",
+	LocalVersion:  "",
+	FFmpegVersion: "",
+	Url:           "",
+	FileName:      "",
+	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
+	//CdnAPI:        "https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release@",
+	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
+	HlaeExist: false,
+}
+
 func main() {
 
-	//1.读取settings.json，无则赋默认值，创建文件
-	Updater := &Setting{
-		Version:       "0.1.4",
-		LatestVersion: "",
-		LocalVersion:  "",
-		Url:           "",
-		FileName:      "",
-		HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
-		CdnAPI:        "https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release@",
-		HlaeExist:     false,
+	//1.读取settings.json，不存在或出错则赋默认值
+	temp, err := readSettings("./settings.json")
+	if err != nil {
+		log.Fatal(err)
+	} else if temp.Version != "" {
+		Updater = &temp
 	}
-	//settings, err := readAll("./settings.json")
-	//if err != nil {
-	//	log.Println(err)
-	//} else {
-	//	//settings
-	//}
-	fmt.Println("=================================")
-	fmt.Println("HLAE Updater CLI -", Updater.Version)
-	fmt.Println("=================================")
 
-	//2.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
+	//2.Welcome~
+	fmt.Println("-----------------------------------------------------------------")
+	fmt.Println("HLAE Updater CLI -", Updater.Version)
+	fmt.Println("-----------------------------------------------------------------")
+
+	//3.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
 	usr, err := user.Current()
 	if err != nil {
 		log.Println(err)
@@ -474,10 +578,10 @@ func main() {
 		log.Println(err)
 		os.Exit(7)
 	} else {
-		fmt.Println("=================================")
+		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println("最新HLAE版本：", Updater.LatestVersion)
 		fmt.Println("下载地址：", Updater.Url)
-		fmt.Println("=================================")
+		fmt.Println("-----------------------------------------------------------------")
 	}
 
 	//6.判断是否要下载/更新，是则利用CDN加速尝试下载HLAE-Release仓库的文件
@@ -531,7 +635,7 @@ func main() {
 
 	//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
 	fmt.Println("下载成功，正在解压...")
-	tempDir := "./temp/hlae"
+	tempDir := "./temp/hlae/"
 	os.RemoveAll(tempDir)
 	err = Unzip("./temp/"+Updater.FileName, tempDir)
 	if err != nil {
@@ -540,7 +644,7 @@ func main() {
 		pause()
 		os.Exit(10)
 	} else {
-		ok, err := isFileExisted(tempDir + "/hlae.exe")
+		ok, err := isFileExisted(tempDir + "hlae.exe")
 		if err != nil {
 			log.Println(err)
 			os.Exit(11)
@@ -553,7 +657,7 @@ func main() {
 
 	//移动，覆盖原目录
 	fmt.Println("解压成功，正在移动文件...")
-	err = copyDir(tempDir, usr.HomeDir+"\\AppData\\Local\\AkiVer\\hlae")
+	err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae")
 	if err != nil {
 		log.Println(err)
 		pause()
@@ -563,13 +667,31 @@ func main() {
 	//9.生成/更新"Version"文件，格式"2.102.0"
 	generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
 
-	fmt.Println("=================================")
+	//10.利用API获取FFMPEG最新版本号
+	fmt.Println("正在获取FFMPEG最新版本信息...")
+	jsonData, err = getHttpData(Updater.FFmpegAPI)
+	if err != nil {
+		log.Println(err)
+		os.Exit(6)
+	}
+
+	Updater.FFmpegVersion, err = getFFmpegLatestVersion(jsonData)
+	if err != nil {
+		log.Println(err)
+	} else {
+		//Linux 64位地址 https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+		//Windows 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-4.3.1-win64-static.zip
+		//MacOS 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/macos64/static/ffmpeg-4.3.1-macos64-static.zip
+		fmt.Println("最新版本:", Updater.FFmpegVersion)
+	}
+
+	fmt.Println("-----------------------------------------------------------------")
 	if Updater.HlaeExist == true {
 		fmt.Println("HLAE更新完成，当前版本号：", Updater.LatestVersion)
 	} else {
 		fmt.Println("HLAE安装完成，当前版本号：", Updater.LatestVersion,
 			"\n请在CSGO Demos Manager的设置中点击'启用HLAE'")
 	}
-	fmt.Println("=================================")
+	fmt.Println("-----------------------------------------------------------------")
 	pause()
 }

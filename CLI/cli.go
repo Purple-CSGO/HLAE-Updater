@@ -1,12 +1,12 @@
 package main
 
 import (
-	"archive/zip"
+	//"archive/zip"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"io"
+	//"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -15,36 +15,24 @@ import (
 	"os/exec"
 	"os/user"
 	"path"
-	"path/filepath"
+	//"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
 
+	"github.com/gen2brain/go-unarr"
 	jsoniter "github.com/json-iterator/go"
 )
 
-/*
-流程(CLI)：
-1.读取settings.json，无则赋默认值，创建文件
-2.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
-3.通过检测"%HOMEDIR%/AppData/Local/AkiVer/hlae/hlae.exe"是否存在判断是否安装了HLAE，否则跳过XML解析
-4.解析包含本地版本信息的XML文件"HLAE/changelog.xml"，获得当前版本
-5.利用API获取包含HLAE仓库信息的JSON文件并解析，获得版本号和下载地址
-6.判断是否要下载/更新，是则利用CDN加速尝试下载HLAE-Release仓库的文件
-7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
-8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
-9.生成/更新"Version"文件，格式"2.102.0"
-*/
-
 ///// util
 func pause() {
-	err := os.RemoveAll("./temp/hlae") //TODO 只删除临时解压hlae是否成功
+	err := os.RemoveAll("./temp/hlae")
 	if err != nil {
 		log.Fatal(err)
 	}
 	var b byte
 	fmt.Println("\n请按Enter结束...")
-	fmt.Scanf("%v", b)
+	_, _ = fmt.Scanf("%v", b)
 }
 
 //打开文件和读内容 利用io/ioutil
@@ -67,7 +55,10 @@ func writeFast(filePath string, content string) error {
 	if err != nil {
 		return err
 	} else if exist == false {
-		os.Mkdir(dir, os.ModePerm)
+		err = os.Mkdir(dir, os.ModePerm)
+		if err != nil {
+			return err
+		}
 	}
 	err = ioutil.WriteFile(filePath, []byte(content), 0666)
 	if err != nil {
@@ -145,98 +136,166 @@ func downloadFile(url string, location string) error {
 }
 
 //压缩
-func Zip(from string, toZip string) error {
-	zipfile, err := os.Create(toZip)
+//func Zip(from string, toZip string) error {
+//	zipfile, err := os.Create(toZip)
+//	if err != nil {
+//		return err
+//	}
+//	defer zipfile.Close()
+//
+//	archive := zip.NewWriter(zipfile)
+//	defer archive.Close()
+//
+//	_ = filepath.Walk(from, func(path string, info os.FileInfo, err error) error {
+//		if err != nil {
+//			return err
+//		}
+//
+//		header, err := zip.FileInfoHeader(info)
+//		if err != nil {
+//			return err
+//		}
+//
+//		header.Name = strings.TrimPrefix(path, filepath.Dir(from)+"/")
+//		// header.Name = path
+//		if info.IsDir() {
+//			header.Name += "/"
+//		} else {
+//			header.Method = zip.Deflate
+//		}
+//
+//		writer, err := archive.CreateHeader(header)
+//		if err != nil {
+//			return err
+//		}
+//
+//		if !info.IsDir() {
+//			file, err := os.Open(path)
+//			if err != nil {
+//				return err
+//			}
+//			defer file.Close()
+//			_, err = io.Copy(writer, file)
+//		}
+//		return err
+//	})
+//
+//	return err
+//}
+//
+////解压
+//func Unzip(zipFile string, to string) error {
+//	zipReader, err := zip.OpenReader(zipFile)
+//	if err != nil {
+//		return err
+//	}
+//	defer zipReader.Close()
+//
+//	for _, f := range zipReader.File {
+//		fpath := filepath.Join(to, f.Name)
+//		if f.FileInfo().IsDir() {
+//			_ = os.MkdirAll(fpath, os.ModePerm)
+//		} else {
+//			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+//				return err
+//			}
+//
+//			inFile, err := f.Open()
+//			defer inFile.Close()
+//			if err != nil {
+//				return err
+//			}
+//
+//			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+//			defer outFile.Close()
+//			if err != nil {
+//				return err
+//			}
+//
+//			_, err = io.Copy(outFile, inFile)
+//			if err != nil {
+//				return err
+//			}
+//		}
+//	}
+//	return nil
+//}
+
+//解压zip 7z rar tar
+func decompress(from string, to string) error {
+	a, err := unarr.NewArchive(from)
 	if err != nil {
 		return err
 	}
-	defer zipfile.Close()
+	defer a.Close()
 
-	archive := zip.NewWriter(zipfile)
-	defer archive.Close()
-
-	_ = filepath.Walk(from, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-
-		header.Name = strings.TrimPrefix(path, filepath.Dir(from)+"/")
-		// header.Name = path
-		if info.IsDir() {
-			header.Name += "/"
-		} else {
-			header.Method = zip.Deflate
-		}
-
-		writer, err := archive.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-			_, err = io.Copy(writer, file)
-		}
-		return err
-	})
-
-	return err
-}
-
-//解压
-func Unzip(zipFile string, to string) error {
-	zipReader, err := zip.OpenReader(zipFile)
+	_, err = a.Extract(to)
 	if err != nil {
 		return err
 	}
-	defer zipReader.Close()
 
-	for _, f := range zipReader.File {
-		fpath := filepath.Join(to, f.Name)
-		if f.FileInfo().IsDir() {
-			_ = os.MkdirAll(fpath, os.ModePerm)
-		} else {
-			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-				return err
-			}
-
-			inFile, err := f.Open()
-			defer inFile.Close()
-			if err != nil {
-				return err
-			}
-
-			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			defer outFile.Close()
-			if err != nil {
-				return err
-			}
-
-			_, err = io.Copy(outFile, inFile)
-			if err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
+
+//func Un7z(filePath string, to string) error {
+//	//判断路径是否存在
+//	ok, err := isFileExisted(filePath)
+//	if err != nil {
+//		return err
+//	} else if ok == false {
+//		return errors.New("7z file does not exist")
+//	}
+//
+//	sz, err := go7z.OpenReader(filePath)
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer sz.Close()
+//
+//	for {
+//		hdr, err := sz.Next()
+//		if err == io.EOF {
+//			break // End of archive
+//		}
+//		if err != nil {
+//			return err
+//		}
+//
+//		// If empty stream (no contents) and isn't specifically an empty file...
+//		// then it's a directory.
+//		if hdr.IsEmptyStream && !hdr.IsEmptyFile {
+//			if err := os.MkdirAll(to + "/" + hdr.Name, os.ModePerm); err != nil {
+//				fmt.Println("line281")
+//				return err
+//			}
+//			continue
+//		}
+//
+//		// Create file
+//		f, err := os.Create(to + "/" + hdr.Name)
+//		if err != nil {
+//			fmt.Println("line290")
+//			return err
+//		}
+//		defer f.Close()
+//
+//		if _, err := io.Copy(f, sz); err != nil {
+//			return err
+//		}
+//	}
+//
+//	return nil
+//}
 
 //规格化路径
 func FormatPath(s string) string {
 	switch runtime.GOOS {
 	case "windows":
-		return strings.Replace(s, "/", "\\", -1)
+		s = strings.Replace(s, "/", "\\", -1)
+		return strings.TrimRight(s, "\\")
 	case "darwin", "linux":
-		return strings.Replace(s, "\\", "/", -1)
+		s = strings.Replace(s, "\\", "/", -1)
+		return strings.TrimRight(s, "\\")
 	default:
 		log.Println("only support linux,windows,darwin, but os is " + runtime.GOOS)
 		return s
@@ -266,6 +325,7 @@ func copyDir(from string, to string) error {
 	case "darwin", "linux":
 		cmd = exec.Command("cp", "-R", from, to)
 	}
+	fmt.Printf("from: %v\nto: %v\n", from, to)
 
 	_, err = cmd.Output()
 	if err != nil {
@@ -275,7 +335,7 @@ func copyDir(from string, to string) error {
 	return nil
 }
 
-///// struct TODO: 1. Setting struct
+///// struct
 type Setting struct {
 	Version       string   //Version of this tool
 	LatestVersion string   //Latest version of hlae
@@ -286,31 +346,33 @@ type Setting struct {
 	FFmpegAPI     string   //API for getting FFmpeg's latest info
 	FFmpegCdnAPI  []string //API for speed up downloading ffmpeg
 	//Temporary for functions
-	Url       string //download link
-	FileName  string //Name of file to be dealed with
-	HlaeExist bool   //If hlae exist in this computer
+	Url         string //download link
+	FileName    string //Name of file to be dealed with
+	HlaeExist   bool   //If hlae exists in this computer
+	FFmpegExist bool   //If FFmpeg exists in this computer
 }
 
 ///// 全局变量
 var Updater = &Setting{
-	Version:       "0.2.2",
+	Version:       "0.3.0",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
 	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
-	HlaeCdnAPI: []string{ //TODO removing @ from main()
+	HlaeCdnAPI: []string{
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release",
 		"https://cdn.jsdelivr.net/gh/yellowfisherz/HLAE-Release",
 		"https://cdn.jsdelivr.net/gh/Tucd7v/Hlaefarmer",
 	},
 	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
 	FFmpegCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFMPEG-Release",
+		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-Archieve",
 	},
 	//Temporary for functions
-	Url:       "",
-	FileName:  "",
-	HlaeExist: false,
+	Url:         "",
+	FileName:    "",
+	HlaeExist:   false,
+	FFmpegExist: false,
 }
 
 //Github Asset
@@ -377,28 +439,28 @@ type FFmpegTag struct {
 
 ///// important functions
 //解析Json，获取最新版本号和下载地址 return TagName, Asset Slice, nil
-func parseReleaseInfo(owner string, repo string) (string, []Asset, error) {
-	//GET请求获得JSON
-	jsonData, err := getHttpData("https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest")
-	if err != nil {
-		log.Println(err)
-		return "", nil, err
-	}
-
-	//初始化实例并解析JSON
-	var latestInst Latest
-	err = json.Unmarshal([]byte(jsonData), &latestInst) //第二个参数要地址传递
-	if err != nil {
-		return "", nil, err
-	}
-
-	//链接有问题也会返回Json，且 "Message": "Not Found"
-	if latestInst.Message == "Not Found" {
-		return "", nil, errors.New("got Json but no valid. Check URL")
-	}
-
-	return latestInst.TagName, latestInst.Assets, nil
-}
+//func parseReleaseInfo(owner string, repo string) (string, []Asset, error) {
+//	//GET请求获得JSON
+//	jsonData, err := getHttpData("https://api.github.com/repos/" + owner + "/" + repo + "/releases/latest")
+//	if err != nil {
+//		log.Println(err)
+//		return "", nil, err
+//	}
+//
+//	//初始化实例并解析JSON
+//	var latestInst Latest
+//	err = json.Unmarshal([]byte(jsonData), &latestInst) //第二个参数要地址传递
+//	if err != nil {
+//		return "", nil, err
+//	}
+//
+//	//链接有问题也会返回Json，且 "Message": "Not Found"
+//	if latestInst.Message == "Not Found" {
+//		return "", nil, errors.New("got Json but no valid. Check URL")
+//	}
+//
+//	return latestInst.TagName, latestInst.Assets, nil
+//}
 
 func readSettings(path string) (Setting, error) {
 	//检查文件是否存在
@@ -463,8 +525,8 @@ func parseLatestInfo(jsonData string) (string, string, string, error) {
 	var latestInst Latest
 
 	//注释下面一行->使用encoding/json库
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
-	err := json.Unmarshal([]byte(jsonData), &latestInst)    //第二个参数要地址传递
+	var jsonx = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
+	err := jsonx.Unmarshal([]byte(jsonData), &latestInst)    //第二个参数要地址传递
 	if err != nil {
 		return "", "", "", err
 	}
@@ -501,7 +563,7 @@ func parseChangelog(xmlData string) (string, error) {
 
 func generateVersion(version string, path string) {
 	ver := strings.Replace(version, "v", "", -1)
-	fmt.Println("正在生成版本文件：", ver)
+	fmt.Println("正在生成版本文件 'version'：", ver)
 	err := writeFast(path, ver)
 	if err != nil {
 		fmt.Println("版本文件生成失败")
@@ -518,8 +580,8 @@ func getFFmpegLatestVersion(jsonData string) (string, error) {
 	var FFmpegInst []FFmpegTag
 
 	//注释下面一行->使用encoding/json库
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
-	err := json.Unmarshal([]byte(jsonData), &FFmpegInst)    //第二个参数要地址传递
+	var jsonx = jsoniter.ConfigCompatibleWithStandardLibrary //使用高性能json-iterator/go库
+	err := jsonx.Unmarshal([]byte(jsonData), &FFmpegInst)    //第二个参数要地址传递
 	if err != nil {
 		return "", err
 	}
@@ -541,6 +603,7 @@ func getFFmpegLatestVersion(jsonData string) (string, error) {
 	return latestTag, nil
 }
 
+//TODO os.exit() 错误代码
 func main() {
 
 	//1.读取settings.json，不存在或出错则赋默认值
@@ -553,7 +616,8 @@ func main() {
 		Updater = &temp
 	}
 
-	//2.Welcome~
+	//TODO 多语言支持
+	//2.Welcome~ TODO 补充使用提示
 	fmt.Println("-----------------------------------------------------------------")
 	fmt.Println("HLAE Updater CLI -", Updater.Version)
 	fmt.Println("-----------------------------------------------------------------")
@@ -609,7 +673,6 @@ func main() {
 		}
 	}
 
-	///// TODO: 处理Merge
 	//6.利用API获取包含HLAE仓库信息的JSON文件并解析，获得版本号和下载地址
 	jsonData, err := getHttpData(Updater.HlaeAPI)
 	if err != nil {
@@ -617,7 +680,7 @@ func main() {
 		pause()
 		os.Exit(6)
 	}
-	tagName := ""
+	var tagName string
 	tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
 	if err != nil {
 		log.Println(err)
@@ -631,19 +694,91 @@ func main() {
 		fmt.Println("-----------------------------------------------------------------")
 	}
 
-	//6.判断是否要下载/更新，是则利用CDN加速尝试下载HLAE-Release仓库的文件
-	if Updater.HlaeExist == true {
-		res := strings.Compare(Updater.LatestVersion, Updater.LocalVersion)
-		if res == 0 {
-			fmt.Println("已是最新版本")
-			generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
-			pause()
-			os.Exit(0)
-		} else if res < 0 {
-			fmt.Println("发生异常，本地版本号>最新版本号，请检查本地HLAE文件")
-			pause()
-			os.Exit(8)
+	//7.判断是否要下载/更新，是则利用CDN加速尝试
+	res := strings.Compare(Updater.LatestVersion, Updater.LocalVersion)
+	if Updater.HlaeExist == true && res < 0 {
+		fmt.Println("发生异常，本地版本号>最新版本号，请检查本地HLAE文件")
+		pause()
+		os.Exit(8)
+	} else if Updater.HlaeExist == true && res == 0 {
+		fmt.Println("HLAE已是最新版本")
+		fmt.Println("-----------------------------------------------------------------")
+	} else if Updater.HlaeExist == false || res > 0 {
+		//hlae不存在或者版本低于最新版时更新
+		fmt.Println("正在尝试加速下载...")
+		for i, API := range Updater.HlaeCdnAPI {
+			cdnURL := API + "@" + Updater.LatestVersion + "/" + Updater.FileName
+			fmt.Println("CDN加速地址:", cdnURL)
+			err = downloadFile(cdnURL, "./temp")
+			if err != nil {
+				fmt.Println("第" + strconv.Itoa(i+1) + "次加速尝试失败")
+				log.Println(err)
+			} else {
+				break
+			}
 		}
+
+		//7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
+		exist, err := isFileExisted("./temp/" + Updater.FileName)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(37)
+		} else if exist == false {
+			fmt.Println("正在从GitHub原地址下载...")
+			err = downloadFile(Updater.Url, "./temp/")
+			if err != nil {
+				fmt.Println("原地址下载失败，请检查网络连接")
+				log.Println(err)
+				pause()
+				os.Exit(9)
+			}
+		}
+
+		//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
+		fmt.Println("下载成功，正在解压...")
+		tempDir := "./temp/hlae/"
+		_ = os.RemoveAll(tempDir)
+		err = decompress("./temp/"+Updater.FileName, tempDir)
+		if err != nil {
+			fmt.Println("解压失败")
+			log.Println(err)
+			pause()
+			os.Exit(10)
+		} else {
+			ok, err := isFileExisted(tempDir + "hlae.exe")
+			if err != nil {
+				log.Println(err)
+				pause()
+				os.Exit(11)
+			} else if ok == false {
+				log.Println(errors.New("successfully unzipped but no file is found"))
+				pause()
+				os.Exit(12)
+			}
+		}
+
+		//移动，覆盖原目录
+		fmt.Println("解压成功，正在移动文件...")
+		err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae")
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(13)
+		}
+
+		//9.生成/更新"Version"文件，格式"2.102.0"
+		generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
+
+		//更新/安装成功的提示
+		fmt.Println("-----------------------------------------------------------------")
+		if Updater.HlaeExist == true {
+			fmt.Println("HLAE更新完成，当前版本号：", Updater.LatestVersion)
+		} else {
+			fmt.Println("HLAE安装完成，当前版本号：", Updater.LatestVersion,
+				"\n请在CSGO Demos Manager的设置中点击'启用HLAE'")
+		}
+		fmt.Println("-----------------------------------------------------------------")
 	}
 
 	///// 利用grab下载
@@ -660,104 +795,132 @@ func main() {
 	//		log.Println(err)
 	//	}
 	//}
+	//检查FFMPEG是否存在
 
-	//TODO
-	fmt.Println("正在尝试加速下载...")
-	for i, API := range Updater.HlaeCdnAPI {
-		cdnURL := API + Updater.LatestVersion + "/" + Updater.FileName
-		fmt.Println("cdnURL:", cdnURL)
-		err = downloadFile(cdnURL, "./temp")
-		if err != nil {
-			fmt.Println("第" + string(i+1) + "次加速尝试失败")
-			log.Println(err)
-			//TODO
-		}
-	}
-	//7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
-	exist, err := isFileExisted("./temp/" + Updater.FileName)
+	//8.通过检测"%HOMEDIR%/AppData/Local/AkiVer/hlae/ffmpeg/bin/ffmpeg.exe"是否存在判断是否安装了FFmpeg
+	Updater.FFmpegExist, err = isFileExisted(usr.HomeDir + "/AppData/Local/AkiVer/hlae/ffmpeg/bin/ffmpeg.exe")
 	if err != nil {
 		log.Println(err)
 		pause()
-		os.Exit(37)
-	} else if exist == false {
-		fmt.Println("正在从GitHub原地址下载...")
-		err = downloadFile(Updater.Url, "./temp/")
-		if err != nil {
-			fmt.Println("原地址下载失败，请检查网络连接")
-			log.Println(err)
-			pause()
-			os.Exit(9)
-		}
+		os.Exit(59)
 	}
 
-	//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
-	fmt.Println("下载成功，正在解压...")
-	tempDir := "./temp/hlae/"
-	os.RemoveAll(tempDir)
-	err = Unzip("./temp/"+Updater.FileName, tempDir)
-	if err != nil {
-		fmt.Println("解压失败")
-		log.Println(err)
-		pause()
-		os.Exit(10)
-	} else {
-		ok, err := isFileExisted(tempDir + "hlae.exe")
-		if err != nil {
-			log.Println(err)
-			os.Exit(11)
-		} else if ok == false {
-			log.Println(errors.New("successfully unzipped but no file is found"))
-			pause()
-			os.Exit(12)
-		}
-	}
-
-	//移动，覆盖原目录
-	fmt.Println("解压成功，正在移动文件...")
-	err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae")
-	if err != nil {
-		log.Println(err)
-		pause()
-		os.Exit(13)
-	}
-
-	//9.生成/更新"Version"文件，格式"2.102.0"
-	generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
-
-	//10.利用API获取FFMPEG最新版本号
+	//9.获取FFMPEG最新版本
 	fmt.Println("正在获取FFMPEG最新版本信息...")
+	var ver string
 	jsonData, err = getHttpData(Updater.FFmpegAPI)
 	if err != nil {
 		log.Println(err)
+		pause()
 		os.Exit(6)
+	} else {
+		ver, err = getFFmpegLatestVersion(jsonData)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(89)
+		}
 	}
 
-	Updater.FFmpegVersion, err = getFFmpegLatestVersion(jsonData)
-	if err != nil {
-		log.Println(err)
-	} else {
+	//10.判断是否要下载/更新FFmpeg
+	res = strings.Compare(ver, Updater.FFmpegVersion)
+	if Updater.FFmpegExist == true && res < 0 {
+		fmt.Println("发生异常，本地版本号>最新版本号，请检查本地FFmpeg文件")
+		pause()
+		os.Exit(8)
+	} else if Updater.FFmpegExist == true && res == 0 {
+		fmt.Println("FFmpeg已是最新版本")
+		fmt.Println("-----------------------------------------------------------------")
+	} else if Updater.FFmpegExist == false || res > 0 {
+		Updater.FFmpegVersion = ""
+		//FFmpeg不存在或者版本低于最新版时更新
 		//Linux 64位地址 https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
 		//Windows 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-4.3.1-win64-static.zip
 		//MacOS 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/macos64/static/ffmpeg-4.3.1-macos64-static.zip
-		fmt.Println("最新版本:", Updater.FFmpegVersion)
+		fmt.Println("最新版本:", ver)
+		fmt.Println("正在尝试加速下载...")
+		fileName := "ffmpeg-" + ver + "-win64-static.7z"
+		for i, API := range Updater.FFmpegCdnAPI {
+			cdnURL := API + "@" + ver + "/" + fileName
+			fmt.Println("CDN加速地址:", cdnURL)
+			err = downloadFile(cdnURL, "./temp")
+			if err != nil {
+				fmt.Println("第" + strconv.Itoa(i+1) + "次加速尝试失败")
+				log.Println(err)
+			} else {
+				break
+			}
+		}
+
+		//检查是否下载成功，否则从原始地址下载
+		exist, err := isFileExisted("./temp/" + fileName)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(37)
+		} else if exist == false {
+			fileName = "ffmpeg-" + ver + "-win64-shared.zip"
+			originalURL := "https://ffmpeg.zeranoe.com/builds/win64/static/" + fileName
+			fmt.Println("正在从GitHub原地址下载...\n - " + originalURL)
+			err = downloadFile(originalURL, "./temp/")
+			if err != nil {
+				fmt.Println("原地址下载失败，请检查网络连接")
+				log.Println(err)
+				pause()
+				os.Exit(9)
+			}
+		}
+
+		//8.解压到临时目录"./temp/"检查"ffmpeg.exe"的正确性，然后移动文件，覆盖原目录
+		fmt.Println("下载成功，正在解压...")
+		tempDir := "./temp/ffmpeg/"
+		_ = os.RemoveAll(tempDir)
+		//TODO 更换7z解压包 现在的包太重了 P.S. 压缩后还好
+		err = decompress("./temp/"+fileName, tempDir)
+		if err != nil {
+			fmt.Println("解压失败")
+			log.Println(err)
+			pause()
+			os.Exit(10)
+		} else {
+			ok, err := isFileExisted(tempDir + "bin/ffmpeg.exe")
+			if err != nil {
+				log.Println(err)
+				pause()
+				os.Exit(11)
+			} else if ok == false {
+				log.Println(errors.New("successfully unzipped but no file is found"))
+				pause()
+				os.Exit(12)
+			}
+		}
+
+		//移动，覆盖原目录
+		fmt.Println("解压成功，正在移动文件...")
+		err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae/ffmpeg")
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(13)
+		}
+		Updater.FFmpegVersion = ver
+		//更新/安装成功的提示
+		fmt.Println("-----------------------------------------------------------------")
+		if Updater.FFmpegExist == true {
+			fmt.Println("FFmpeg更新完成，当前版本号：", Updater.FFmpegVersion)
+		} else {
+			fmt.Println("FFMPEG安装完成，当前版本号：", Updater.FFmpegVersion)
+		}
+		fmt.Println("-----------------------------------------------------------------")
 	}
 
-	fmt.Println("-----------------------------------------------------------------")
-	if Updater.HlaeExist == true {
-		fmt.Println("HLAE更新完成，当前版本号：", Updater.LatestVersion)
-	} else {
-		fmt.Println("HLAE安装完成，当前版本号：", Updater.LatestVersion,
-			"\n请在CSGO Demos Manager的设置中点击'启用HLAE'")
-	}
-	fmt.Println("-----------------------------------------------------------------")
-	pause()
-
-	//6.保存内容
+	//11.保存设置
 	err = saveSettings("./settings.json")
 	if err != nil {
 		log.Println(err)
 		pause()
+		os.Exit(88)
 	}
 
-	fmt.Println("Job Done!")
+	pause()
 }

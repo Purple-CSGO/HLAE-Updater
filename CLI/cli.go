@@ -341,9 +341,11 @@ type Setting struct {
 	LatestVersion string   //Latest version of hlae
 	LocalVersion  string   //Local version of hlae
 	FFmpegVersion string   //Local FFmpeg version
-	HlaeAPI       string   //API for gettings hlae's latest info
+	HlaeAPI       string   //API for getting hlae's latest info
+	ArchieveAPI   string   //API for getting archieved HlaeAPI
 	HlaeCdnAPI    []string //API for speed up downloading hlae
 	FFmpegAPI     string   //API for getting FFmpeg's latest info
+	FFarcAPI      string   //
 	FFmpegCdnAPI  []string //API for speed up downloading ffmpeg
 	//Temporary for functions
 	Url         string //download link
@@ -354,17 +356,19 @@ type Setting struct {
 
 ///// 全局变量
 var Updater = &Setting{
-	Version:       "0.3.0",
+	Version:       "0.3.1",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
 	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
+	ArchieveAPI:   "https://github.com/Purple-CSGO/HLAE-Archieve/blob/master/release.json",
 	HlaeCdnAPI: []string{
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release",
 		"https://cdn.jsdelivr.net/gh/yellowfisherz/HLAE-Release",
 		"https://cdn.jsdelivr.net/gh/Tucd7v/Hlaefarmer",
 	},
 	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
+	FFarcAPI:  "https://github.com/Purple-CSGO/FFmpeg-Archieve/blob/master/tags.json",
 	FFmpegCdnAPI: []string{
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-Archieve",
 	},
@@ -677,8 +681,13 @@ func main() {
 	jsonData, err := getHttpData(Updater.HlaeAPI)
 	if err != nil {
 		log.Println(err)
-		pause()
-		os.Exit(6)
+		fmt.Println("HLAE API访问失败，正在使用备份API...")
+		jsonData, err = getHttpData(Updater.ArchieveAPI)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(6)
+		}
 	}
 	var tagName string
 	tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
@@ -811,15 +820,20 @@ func main() {
 	jsonData, err = getHttpData(Updater.FFmpegAPI)
 	if err != nil {
 		log.Println(err)
-		pause()
-		os.Exit(6)
-	} else {
-		ver, err = getFFmpegLatestVersion(jsonData)
+		fmt.Println("FFmpeg API访问失败，正在使用备份API...")
+		jsonData, err = getHttpData(Updater.FFarcAPI)
 		if err != nil {
 			log.Println(err)
 			pause()
-			os.Exit(89)
+			os.Exit(6)
 		}
+	}
+
+	ver, err = getFFmpegLatestVersion(jsonData)
+	if err != nil {
+		log.Println(err)
+		pause()
+		os.Exit(89)
 	}
 
 	//10.判断是否要下载/更新FFmpeg

@@ -325,7 +325,6 @@ func copyDir(from string, to string) error {
 	case "darwin", "linux":
 		cmd = exec.Command("cp", "-R", from, to)
 	}
-	fmt.Printf("from: %v\nto: %v\n", from, to)
 
 	_, err = cmd.Output()
 	if err != nil {
@@ -356,16 +355,17 @@ type Setting struct {
 
 ///// 全局变量
 var Updater = &Setting{
-	Version:       "0.3.1",
+	Version:       "0.3.3",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
 	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
 	ArchieveAPI:   "https://github.com/Purple-CSGO/HLAE-Archieve/blob/master/release.json",
 	HlaeCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Release",
+		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Archieve",
 		"https://cdn.jsdelivr.net/gh/yellowfisherz/HLAE-Release",
 		"https://cdn.jsdelivr.net/gh/Tucd7v/Hlaefarmer",
+		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Manual-Archieve",
 	},
 	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
 	FFarcAPI:  "https://github.com/Purple-CSGO/FFmpeg-Archieve/blob/master/tags.json",
@@ -567,15 +567,12 @@ func parseChangelog(xmlData string) (string, error) {
 
 func generateVersion(version string, path string) {
 	ver := strings.Replace(version, "v", "", -1)
-	fmt.Println("正在生成版本文件 'version'：", ver)
 	err := writeFast(path, ver)
 	if err != nil {
 		fmt.Println("版本文件生成失败")
 		log.Println(err)
 		pause()
 		os.Exit(1)
-	} else {
-		fmt.Println("版本文件生成成功")
 	}
 }
 
@@ -621,10 +618,22 @@ func main() {
 	}
 
 	//TODO 多语言支持
-	//2.Welcome~ TODO 补充使用提示
-	fmt.Println("-----------------------------------------------------------------")
-	fmt.Println("HLAE Updater CLI -", Updater.Version)
-	fmt.Println("-----------------------------------------------------------------")
+	//2.Welcome~
+
+	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏━━━┓")
+	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃")
+	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┗┛┏┛┃")
+	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┏━┛┏┛")
+	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┃ ┗━┓")
+	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛ ┗━━━┛")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+
+	//┏━━━┓     ┏┓  ┏━━━┓ ┏━━━┓ ┏┓ ┏┓  ┏━━━┓ ┏━━━┓ ┏━━━┓ ┏━━━┓ ┏━━━┓"
+	//┃┏━┓┃    ┏┛┃  ┃┏━┓┃ ┃┏━┓┃ ┃┃ ┃┃  ┃┏━━┛ ┃┏━━┛ ┃┏━┓┃ ┃┏━┓┃ ┃┏━┓┃"
+	//┃┃ ┃┃    ┗┓┃  ┗┛┏┛┃ ┗┛┏┛┃ ┃┗━┛┃  ┃┗━━┓ ┃┗━━┓ ┗┛ ┃┃ ┃┗━┛┃ ┃┗━┛┃"
+	//┃┃ ┃┃     ┃┃  ┏━┛┏┛ ┏┓┗┓┃ ┗━━┓┃  ┗━━┓┃ ┃┏━┓┃    ┃┃ ┃┏━┓┃ ┗━━┓┃"
+	//┃┗━┛┃ ┏┓ ┏┛┗┓ ┃ ┗━┓ ┃┗━┛┃    ┃┃  ┏━━┛┃ ┃┗━┛┃    ┃┃ ┃┗━┛┃ ┏━━┛┃"
+	//┗━━━┛ ┗┛ ┗━━┛ ┗━━━┛ ┗━━━┛    ┗┛  ┗━━━┛ ┗━━━┛    ┗┛ ┗━━━┛ ┗━━━┛"
 
 	//3.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
 	usr, err := user.Current()
@@ -699,8 +708,8 @@ func main() {
 		Updater.LatestVersion = tagName
 		fmt.Println("-----------------------------------------------------------------")
 		fmt.Println("最新HLAE版本：", Updater.LatestVersion)
-		fmt.Println("下载地址：", Updater.Url)
 		fmt.Println("-----------------------------------------------------------------")
+		fmt.Println("下载地址：\n" + Updater.Url)
 	}
 
 	//7.判断是否要下载/更新，是则利用CDN加速尝试
@@ -716,12 +725,13 @@ func main() {
 		//hlae不存在或者版本低于最新版时更新
 		fmt.Println("正在尝试加速下载...")
 		for i, API := range Updater.HlaeCdnAPI {
-			cdnURL := API + "@" + Updater.LatestVersion + "/" + Updater.FileName
-			fmt.Println("CDN加速地址:", cdnURL)
+			cdnURL := API + "@" + Updater.LatestVersion + "/" + Updater.LatestVersion + "/" + Updater.FileName
+			fmt.Println("CDN加速地址:\n" + cdnURL)
 			err = downloadFile(cdnURL, "./temp")
 			if err != nil {
 				fmt.Println("第" + strconv.Itoa(i+1) + "次加速尝试失败")
 				log.Println(err)
+				fmt.Println("-----------------------------------------------------------------")
 			} else {
 				break
 			}
@@ -775,6 +785,7 @@ func main() {
 			pause()
 			os.Exit(13)
 		}
+		fmt.Println("HLAE安装/更新成功！")
 
 		//9.生成/更新"Version"文件，格式"2.102.0"
 		generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
@@ -785,7 +796,7 @@ func main() {
 			fmt.Println("HLAE更新完成，当前版本号：", Updater.LatestVersion)
 		} else {
 			fmt.Println("HLAE安装完成，当前版本号：", Updater.LatestVersion,
-				"\n请在CSGO Demos Manager的设置中点击'启用HLAE'")
+				"\n请在CSGO Demos Manager的设置中点击`启用HLAE`")
 		}
 		fmt.Println("-----------------------------------------------------------------")
 	}
@@ -856,11 +867,12 @@ func main() {
 		fileName := "ffmpeg-" + ver + "-win64-static.7z"
 		for i, API := range Updater.FFmpegCdnAPI {
 			cdnURL := API + "@" + ver + "/" + fileName
-			fmt.Println("CDN加速地址:", cdnURL)
+			fmt.Println("CDN加速地址:\n" + cdnURL)
 			err = downloadFile(cdnURL, "./temp")
 			if err != nil {
 				fmt.Println("第" + strconv.Itoa(i+1) + "次加速尝试失败")
 				log.Println(err)
+				fmt.Println("-----------------------------------------------------------------")
 			} else {
 				break
 			}
@@ -917,6 +929,7 @@ func main() {
 			pause()
 			os.Exit(13)
 		}
+		fmt.Println("FFmpeg安装/更新成功！")
 		Updater.FFmpegVersion = ver
 		//更新/安装成功的提示
 		fmt.Println("-----------------------------------------------------------------")

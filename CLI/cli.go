@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	//"archive/zip"
 	"encoding/json"
 	"encoding/xml"
@@ -354,7 +355,7 @@ type Setting struct {
 
 ///// 全局变量 TODO 修改备份hlae api获取方式 保留一个手动HLAE-Backup仓库
 var Updater = &Setting{
-	Version:       "0.3.4",
+	Version:       "0.3.5",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
@@ -369,6 +370,7 @@ var Updater = &Setting{
 	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
 	FFmpegCdnAPI: []string{
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-Archieve",
+		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-backup",
 	},
 	//Temporary for functions
 	Url:         "",
@@ -513,7 +515,12 @@ func saveSettings(path string) error {
 		return err
 	}
 
-	err = writeFast(path, string(JsonData))
+	//json.Indent(JsonData, )
+	var str bytes.Buffer
+	_ = json.Indent(&str, []byte(JsonData), "", "    ")
+	//fmt.Println("formated: ", str.String())
+
+	err = writeFast(path, str.String())
 	if err != nil {
 		return err
 	}
@@ -634,18 +641,18 @@ func main() {
 	//TODO 多语言支持
 	//2.Welcome~
 
-	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏┓ ┏┓")
-	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┃ ┃┃")
-	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┃┗━┛┃")
+	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏━━━┓")
+	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━━┛")
+	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┃┗━━┓")
 	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┗━━┓┃")
-	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓    ┃┃")
-	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛    ┗┛")
+	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┏━━┛┃")
+	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛ ┗━━━┛")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println("·HLAE+FFmpeg自动安装/更新工具 by Purp1e")
 	fmt.Println("·项目地址：\thttps://github.com/Purple-CSGO/HLAE-Updater")
 	fmt.Println("·中文站地址：\thttps://hlae.site/topic/453")
 	fmt.Println("·反馈邮箱：\t438518244@qq.com")
-	fmt.Println("─────────────────────────────────────  说明 ────────────────────────────────────────────")
+	fmt.Println("──────────────────────────────────────  说明 ───────────────────────────────────────────")
 	fmt.Println("1. 本工具暂时只为CSGO Demos Manager安装HLAE/FFmpeg服务")
 	fmt.Println("2. 系统用户名最好不包含空格/中文/俄文等字符")
 	fmt.Println("3. CDN加速和备用API相比比官方最新版滞后2分钟")
@@ -673,9 +680,9 @@ func main() {
 		os.Exit(33)
 	} else if ok == false {
 		fmt.Println("·没有检测到CSGO Demos Manager，请确认安装后再使用本工具")
-		fmt.Printf("·官方最新版：https://github.com/akiver/CSGO-Demos-Manager/releases/latest")
-		fmt.Printf("·中文站搬运贴：https://hlae.site/topic/390")
-		fmt.Printf("·搬运链接：https://cloud.189.cn/t/BVZbQvUJFrum（访问码：jt7e）")
+		fmt.Println("·官方最新版：https://github.com/akiver/CSGO-Demos-Manager/releases/latest")
+		fmt.Println("·中文站搬运贴：https://hlae.site/topic/390")
+		fmt.Println("·搬运链接：https://cloud.189.cn/t/BVZbQvUJFrum（访问码：jt7e）")
 		pause()
 		os.Exit(0)
 	}
@@ -714,6 +721,7 @@ func main() {
 
 	//6.利用API获取包含HLAE仓库信息的JSON文件并解析，获得版本号和下载地址
 	fmt.Println("·正在获取HLAE最新版本信息...")
+	var tagName string
 	jsonData, err := getHttpData(Updater.HlaeAPI)
 	if err != nil {
 		log.Println(err)
@@ -721,50 +729,53 @@ func main() {
 		for i, API := range Updater.HlaeCdnAPI {
 			jsonData, err = getHttpData(API + "/release.json")
 			if err != nil {
-				fmt.Println("·第" + strconv.Itoa(i) + "个备用API访问失败")
+				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
 				log.Println(err)
-			} else {
-				break
+				continue
 			}
-		}
-	}
-	var tagName string
-	tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
-	if err != nil {
-		log.Println(err)
-		fmt.Println("·HLAE API访问失败，正在使用备用API...")
-		for i, API := range Updater.HlaeCdnAPI {
-			jsonData, err = getHttpData(API + "/release.json")
+
+			tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
 			if err != nil {
-				fmt.Println("·第" + strconv.Itoa(i) + "个备用API访问失败")
+				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
 				log.Println(err)
-			} else {
-				break
+				continue
 			}
 		}
 		if err != nil {
-			os.Exit(7)
+			log.Println(err)
+			pause()
+			os.Exit(777)
+		} else {
+			Updater.LatestVersion = tagName
+			fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+			fmt.Println("·最新HLAE版本：", Updater.LatestVersion)
+			fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+			fmt.Println("·下载地址：\n  " + Updater.Url)
+			fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 		}
 	} else {
-		Updater.LatestVersion = tagName
-		fmt.Println("·最新HLAE版本：", Updater.LatestVersion)
-		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
-		fmt.Println("·下载地址：\n  " + Updater.Url)
-		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+		tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(808)
+		} else {
+			Updater.LatestVersion = tagName
+			fmt.Println("·最新HLAE版本：", Updater.LatestVersion)
+			fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+			fmt.Println("·下载地址：\n  " + Updater.Url)
+			fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+		}
 	}
 
 	//7.判断是否要下载/更新，是则利用CDN加速尝试
 	res := strings.Compare(Updater.LatestVersion, Updater.LocalVersion)
-	if Updater.HlaeExist == true && res < 0 {
-		fmt.Println("·发生异常，本地版本号>最新版本号，请检查本地HLAE文件")
-		pause()
-		os.Exit(8)
-	} else if Updater.HlaeExist == true && res == 0 {
+	if Updater.HlaeExist == true && res == 0 {
 		fmt.Println("·HLAE已是最新版本")
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
-	} else if Updater.HlaeExist == false || res > 0 {
+	} else {
 		//hlae不存在或者版本低于最新版时更新
-		fmt.Println("·正在尝试加速下载...")
+		fmt.Println("·需要更新HLAE，正在尝试加速下载...")
 		for i, API := range Updater.HlaeCdnAPI {
 			cdnURL := API + "@" + Updater.LatestVersion + "/" + Updater.LatestVersion + "/" + Updater.FileName
 			fmt.Println("·CDN加速地址:\n " + cdnURL)
@@ -889,39 +900,49 @@ func main() {
 		log.Println(err)
 		fmt.Println("·FFmpeg API访问失败，正在使用备用API...")
 		for i, API := range Updater.FFmpegCdnAPI {
-			jsonData, err = getHttpData(API + "/release.json")
+			jsonData, err = getHttpData(API + "/tags.json")
 			if err != nil {
-				fmt.Println("·第" + strconv.Itoa(i) + "个备用API访问失败")
+				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
 				log.Println(err)
-			} else {
-				break
+				continue
+			}
+
+			ver, err = getFFmpegLatestVersion(jsonData)
+			if err != nil {
+				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
+				log.Println(err)
+				continue
 			}
 		}
-	}
-
-	ver, err = getFFmpegLatestVersion(jsonData)
-	if err != nil {
-		log.Println(err)
-		pause()
-		os.Exit(89)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(985)
+		}
+	} else {
+		ver, err = getFFmpegLatestVersion(jsonData)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(89)
+		}
 	}
 
 	//10.判断是否要下载/更新FFmpeg
 	res = strings.Compare(ver, Updater.FFmpegVersion)
-	if Updater.FFmpegExist == true && res < 0 {
-		fmt.Println("·发生异常，本地版本号>最新版本号，请检查本地FFmpeg文件")
-		pause()
-		os.Exit(8)
-	} else if Updater.FFmpegExist == true && res == 0 {
+	if Updater.FFmpegExist == true && res == 0 {
+		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 		fmt.Println("·FFmpeg已是最新版本")
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
-	} else if Updater.FFmpegExist == false || res > 0 {
+	} else {
 		Updater.FFmpegVersion = ""
 		//FFmpeg不存在或者版本低于最新版时更新
 		//Linux 64位地址 https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
 		//Windows 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/win64/static/ffmpeg-4.3.1-win64-static.zip
 		//MacOS 64位地址 需要版本号 shared/static https://ffmpeg.zeranoe.com/builds/macos64/static/ffmpeg-4.3.1-macos64-static.zip
+		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 		fmt.Println("·最新版本:", ver)
+		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 		fmt.Println("·正在尝试加速下载...")
 		fileName := "ffmpeg-" + ver + "-win64-static.7z"
 		for i, API := range Updater.FFmpegCdnAPI {
@@ -946,7 +967,7 @@ func main() {
 		} else if exist == false {
 			fileName = "ffmpeg-" + ver + "-win64-shared.zip"
 			originalURL := "https://ffmpeg.zeranoe.com/builds/win64/static/" + fileName
-			fmt.Println("·正在从GitHub原地址下载...\n - " + originalURL)
+			fmt.Println("·正在从GitHub原地址下载...\n  " + originalURL)
 			err = downloadFile(originalURL, "./temp/")
 			if err != nil {
 				fmt.Println("·原地址下载失败，请检查网络连接")
@@ -995,7 +1016,7 @@ func main() {
 		if Updater.FFmpegExist == true {
 			fmt.Println("·FFmpeg更新完成，当前版本号：", Updater.FFmpegVersion)
 		} else {
-			fmt.Println("·FFMPEG安装完成，当前版本号：", Updater.FFmpegVersion)
+			fmt.Println("·FFmpeg安装完成，当前版本号：", Updater.FFmpegVersion)
 		}
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 	}

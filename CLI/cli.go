@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"unicode"
+
 	//"archive/zip"
 	"encoding/json"
 	"encoding/xml"
@@ -33,6 +35,11 @@ func pause() {
 	}
 	var b byte
 	fmt.Println("\n请按Enter结束...")
+	_, _ = fmt.Scanf("%v", b)
+}
+
+func flush() {
+	var b byte
 	_, _ = fmt.Scanf("%v", b)
 }
 
@@ -135,6 +142,17 @@ func downloadFile(url string, location string) error {
 	} else {
 		return nil
 	}
+}
+
+func IsChinese(str string) bool {
+	var count int
+	for _, v := range str {
+		if unicode.Is(unicode.Han, v) {
+			count++
+			break
+		}
+	}
+	return count > 0
 }
 
 //压缩
@@ -351,11 +369,13 @@ type Setting struct {
 	FileName    string //Name of file to be dealed with
 	HlaeExist   bool   //If hlae exists in this computer
 	FFmpegExist bool   //If FFmpeg exists in this computer
+	ServeState  int    //0=unset 1=for dedicated hlae 2=for manager's hlae
+	CustomPath  string //Path of dedicated hlae. No `/hlae/HLAE.exe`
 }
 
 ///// 全局变量 TODO 修改备份hlae api获取方式 保留一个手动HLAE-Backup仓库
 var Updater = &Setting{
-	Version:       "0.3.5",
+	Version:       "0.3.7",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
@@ -377,6 +397,8 @@ var Updater = &Setting{
 	FileName:    "",
 	HlaeExist:   false,
 	FFmpegExist: false,
+	ServeState:  0,
+	CustomPath:  "",
 }
 
 //Github Asset
@@ -517,7 +539,7 @@ func saveSettings(path string) error {
 
 	//json.Indent(JsonData, )
 	var str bytes.Buffer
-	_ = json.Indent(&str, []byte(JsonData), "", "    ")
+	_ = json.Indent(&str, JsonData, "", "    ")
 	//fmt.Println("formated: ", str.String())
 
 	err = writeFast(path, str.String())
@@ -642,21 +664,20 @@ func main() {
 	//2.Welcome~
 
 	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏━━━┓")
-	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━━┛")
-	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┃┗━━┓")
-	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┗━━┓┃")
-	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┏━━┛┃")
-	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛ ┗━━━┛")
+	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃")
+	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┗┛ ┃┃")
+	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃       ┃┃")
+	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓    ┃┃")
+	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛    ┗┛")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println("·HLAE+FFmpeg自动安装/更新工具 by Purp1e")
 	fmt.Println("·项目地址：\thttps://github.com/Purple-CSGO/HLAE-Updater")
 	fmt.Println("·中文站地址：\thttps://hlae.site/topic/453")
 	fmt.Println("·反馈邮箱：\t438518244@qq.com")
 	fmt.Println("──────────────────────────────────────  说明 ───────────────────────────────────────────")
-	fmt.Println("1. 本工具暂时只为CSGO Demos Manager安装HLAE/FFmpeg服务")
-	fmt.Println("2. 系统用户名最好不包含空格/中文/俄文等字符")
-	fmt.Println("3. CDN加速和备用API相比比官方最新版滞后2分钟")
-	fmt.Println("4. FFmpeg加速为手动维护，不一定是最新版")
+	fmt.Println("·系统用户名最好不包含空格/中文/俄文等字符")
+	fmt.Println("·CDN加速和备用API相比比官方最新版滞后3分钟")
+	fmt.Println("·FFmpeg加速为手动维护，不一定是最新版")
 	fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 
 	//┏━━━┓     ┏┓  ┏━━━┓ ┏━━━┓ ┏┓ ┏┓  ┏━━━┓ ┏━━━┓ ┏━━━┓ ┏━━━┓ ┏━━━┓"
@@ -666,14 +687,67 @@ func main() {
 	//┃┗━┛┃ ┏┓ ┏┛┗┓ ┃ ┗━┓ ┃┗━┛┃    ┃┃  ┏━━┛┃ ┃┗━┛┃    ┃┃ ┃┗━┛┃ ┏━━┛┃"
 	//┗━━━┛ ┗┛ ┗━━┛ ┗━━━┛ ┗━━━┛    ┗┛  ┗━━━┛ ┗━━━┛    ┗┛ ┗━━━┛ ┗━━━┛"
 
+	//检查服务状态 0=unset 1=for dedicated hlae 2=for manager's hlae
+	if Updater.ServeState == 1 {
+		exist, err := isFileExisted(Updater.CustomPath)
+		if err != nil {
+			log.Println(err)
+			pause()
+			os.Exit(23)
+		} else if exist == false {
+			fmt.Println("·HLAE路径错误，请重新选择")
+			Updater.ServeState = 0
+		}
+	}
+	if Updater.ServeState == 0 {
+		choice, tPath := 0, ""
+		fmt.Println("·请选择为单独的HLAE服务还是为CSGO Demos Manager安装HLAE/FFmpeg服务：")
+		fmt.Println("· 回车Enter → 为CSGO Demos Manager服务")
+		fmt.Println("·     输入1 → 为单独的HLAE服务")
+		fmt.Scanf("%d", &choice)
+		flush()
+		if choice == 1 {
+			fmt.Println("·请输入HLAE要安装的位置，如`D:/MovieMaking`，不可包含中文或空格")
+			for {
+				fmt.Scanf("%v", &tPath)
+				//TODO: 判断路径是否为绝对路径
+				if strings.Contains(tPath, " ") || IsChinese(tPath) {
+					fmt.Println("·路径包含中文或空格，请重新输入")
+					continue
+				}
+				exist, err := isFileExisted(tPath)
+				if err != nil {
+					log.Println(err)
+					pause()
+					os.Exit(18)
+				} else if exist == false {
+					fmt.Println("·路径错误，请重新输入")
+				} else {
+					break
+				}
+				flush()
+			}
+			Updater.CustomPath = tPath
+			Updater.ServeState = 1
+		} else {
+			Updater.ServeState = 2
+		}
+	}
+
 	//3.通过检测"%HOMEDIR%/AppData/Local/AkiVer/"是否存在判断是否安装了CSGO DEMOS MANAGER，否则退出
+	hlaeDir := ""
 	usr, err := user.Current()
 	if err != nil {
 		log.Println(err)
 		pause()
 		os.Exit(23)
 	}
-	ok, err := isFileExisted(usr.HomeDir + "/AppData/Local/AkiVer")
+	if Updater.ServeState == 1 {
+		hlaeDir = Updater.CustomPath
+	} else if Updater.ServeState == 2 {
+		hlaeDir = usr.HomeDir + "/AppData/Local/AkiVer"
+	}
+	ok, err := isFileExisted(hlaeDir)
 	if err != nil {
 		log.Println(err)
 		pause()
@@ -689,7 +763,7 @@ func main() {
 
 	fmt.Println("·正在获取本地HLAE版本信息...")
 	//4.通过检测"%HOMEDIR%/AppData/Local/AkiVer/hlae/hlae.exe"是否存在判断是否安装了HLAE，否则跳过XML解析
-	Updater.HlaeExist, err = isFileExisted(usr.HomeDir + "/AppData/Local/AkiVer/hlae/hlae.exe")
+	Updater.HlaeExist, err = isFileExisted(hlaeDir + "/hlae/hlae.exe")
 	if err != nil {
 		log.Println(err)
 		pause()
@@ -698,9 +772,9 @@ func main() {
 
 	//5.解析包含本地版本信息的XML文件"HLAE/changelog.xml"，获得当前版本
 	if Updater.HlaeExist == false {
-		fmt.Println("·检测到尚未给CSGO Demos Manager安装HLAE")
+		fmt.Println("·检测到尚未安装HLAE")
 	} else {
-		xmlData, err := readAll(usr.HomeDir + "/AppData/Local/AkiVer/hlae/changelog.xml")
+		xmlData, err := readAll(hlaeDir + "/hlae/changelog.xml")
 		if err != nil {
 			log.Println(err)
 			pause()
@@ -831,7 +905,7 @@ func main() {
 
 		//移动，覆盖原目录
 		fmt.Println("·解压成功，正在移动文件...")
-		err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae")
+		err = copyDir(tempDir, hlaeDir+"/hlae")
 		if err != nil {
 			log.Println(err)
 			pause()
@@ -840,7 +914,7 @@ func main() {
 		fmt.Println("·HLAE安装/更新成功！")
 
 		//9.生成/更新"Version"文件，格式"2.102.0"
-		generateVersion(Updater.LatestVersion, usr.HomeDir+"/AppData/Local/AkiVer/hlae/version")
+		generateVersion(Updater.LatestVersion, hlaeDir+"/hlae/version")
 
 		//更新/安装成功的提示
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
@@ -870,7 +944,7 @@ func main() {
 	//检查FFMPEG是否存在
 
 	//8.通过检测"%HOMEDIR%/AppData/Local/AkiVer/hlae/ffmpeg/bin/ffmpeg.exe"是否存在判断是否安装了FFmpeg
-	Updater.FFmpegExist, err = isFileExisted(usr.HomeDir + "/AppData/Local/AkiVer/hlae/ffmpeg/bin/ffmpeg.exe")
+	Updater.FFmpegExist, err = isFileExisted(hlaeDir + "/hlae/ffmpeg/bin/ffmpeg.exe")
 	if err != nil {
 		log.Println(err)
 		pause()
@@ -878,7 +952,7 @@ func main() {
 	}
 
 	//9.获取FFMPEG最新版本
-	exist, err := isFileExisted(usr.HomeDir + "/AppData/Local/AkiVer/hlae/ffmpeg/bin/ffmpeg.exe")
+	exist, err := isFileExisted(hlaeDir + "/hlae/ffmpeg/bin/ffmpeg.exe")
 	if err != nil {
 		log.Println(err)
 		pause()
@@ -1003,7 +1077,7 @@ func main() {
 
 		//移动，覆盖原目录
 		fmt.Println("·解压成功，正在移动文件...")
-		err = copyDir(tempDir, usr.HomeDir+"/AppData/Local/AkiVer/hlae/ffmpeg")
+		err = copyDir(tempDir, hlaeDir+"/hlae/ffmpeg")
 		if err != nil {
 			log.Println(err)
 			pause()

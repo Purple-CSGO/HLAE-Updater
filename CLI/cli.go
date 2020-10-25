@@ -375,7 +375,7 @@ type Setting struct {
 
 ///// 全局变量 TODO 修改备份hlae api获取方式 保留一个手动HLAE-Backup仓库
 var Updater = &Setting{
-	Version:       "0.3.7",
+	Version:       "0.3.8",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
@@ -665,10 +665,10 @@ func main() {
 
 	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏━━━┓")
 	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃")
-	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┗┛ ┃┃")
-	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃       ┃┃")
-	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓    ┃┃")
-	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛    ┗┛")
+	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┃┗━┛┃")
+	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┃┏━┓┃")
+	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┃┗━┛┃")
+	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛ ┗━━━┛")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println("·HLAE+FFmpeg自动安装/更新工具 by Purp1e")
 	fmt.Println("·项目地址：\thttps://github.com/Purple-CSGO/HLAE-Updater")
@@ -704,12 +704,12 @@ func main() {
 		fmt.Println("·请选择为单独的HLAE服务还是为CSGO Demos Manager安装HLAE/FFmpeg服务：")
 		fmt.Println("· 回车Enter → 为CSGO Demos Manager服务")
 		fmt.Println("·     输入1 → 为单独的HLAE服务")
-		fmt.Scanf("%d", &choice)
+		_, _ = fmt.Scanf("%d", &choice)
 		flush()
 		if choice == 1 {
 			fmt.Println("·请输入HLAE要安装的位置，如`D:/MovieMaking`，不可包含中文或空格")
 			for {
-				fmt.Scanf("%v", &tPath)
+				_, _ = fmt.Scanf("%v", &tPath)
 				//TODO: 判断路径是否为绝对路径
 				if strings.Contains(tPath, " ") || IsChinese(tPath) {
 					fmt.Println("·路径包含中文或空格，请重新输入")
@@ -960,7 +960,7 @@ func main() {
 	} else if exist == true && Updater.FFmpegVersion == "" {
 		confirm := "y"
 		fmt.Printf("·检测到已有FFmpeg，是否安装最新版（Y/N）：")
-		fmt.Scanf("%v", &confirm)
+		_, _ = fmt.Scanf("%v", &confirm)
 		if confirm == "n" || confirm == "N" {
 			pause()
 			os.Exit(0)
@@ -1056,7 +1056,7 @@ func main() {
 		tempDir := "./temp/ffmpeg/"
 		_ = os.RemoveAll(tempDir)
 		//TODO 更换7z解压包 现在的包太重了 P.S. 压缩后还好
-		err = decompress("./temp/"+fileName, tempDir)
+		err = decompress("./temp/"+fileName, "./temp/ffmpeg")
 		if err != nil {
 			fmt.Println("·解压失败")
 			log.Println(err)
@@ -1069,9 +1069,19 @@ func main() {
 				pause()
 				os.Exit(11)
 			} else if ok == false {
-				log.Println(errors.New("successfully unzipped but no file is found"))
-				pause()
-				os.Exit(12)
+				ok, err = isFileExisted(tempDir + "/ffmpeg-" + ver + "-win64-static/bin/ffmpeg.exe")
+				if err != nil {
+					log.Println(err)
+					pause()
+					os.Exit(11)
+				} else if ok == false {
+					log.Println(errors.New("successfully unzipped but no file is found"))
+					pause()
+					os.Exit(12)
+				} else {
+					tempDir = tempDir + "/ffmpeg-" + ver + "-win64-static/"
+				}
+
 			}
 		}
 
@@ -1093,6 +1103,17 @@ func main() {
 			fmt.Println("·FFmpeg安装完成，当前版本号：", Updater.FFmpegVersion)
 		}
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
+	}
+
+	dir, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("·本工具所在位置：\n  " + dir)
+	if Updater.ServeState == 1 {
+		fmt.Println("·HLAE所在位置：\n  " + FormatPath(Updater.CustomPath))
+	} else if Updater.ServeState == 2 {
+		fmt.Println(FormatPath("·HLAE所在位置：\n  " + usr.HomeDir + "/AppData/Local/AkiVer"))
 	}
 
 	pause()

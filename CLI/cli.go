@@ -381,16 +381,13 @@ var Updater = &Setting{
 	FFmpegVersion: "",
 	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
 	HlaeCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Archieve",
-		"https://cdn.jsdelivr.net/gh/yellowfisherz/HLAE-Release",
-		"https://cdn.jsdelivr.net/gh/Tucd7v/Hlaefarmer",
+		"https://cdn.jsdelivr.net/gh/One-Studio/HLAE-Archive",
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Manual-Archieve",
 		"https://cdn.jsdelivr.net/gh/Purple-CSGO/afx-backup",
 	},
-	FFmpegAPI: "https://api.github.com/repos/FFmpeg/FFmpeg/tags",
+	FFmpegAPI: "https://www.gyan.dev/ffmpeg/builds/release-version",
 	FFmpegCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-Archieve",
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/FFmpeg-backup",
+		"https://cdn.jsdelivr.net/gh/One-Studio/FFmpeg-Win64@master/",
 	},
 	//Temporary for functions
 	Url:         "",
@@ -969,24 +966,24 @@ func main() {
 
 	fmt.Println("·正在获取FFMPEG最新版本信息...")
 	var ver string
-	jsonData, err = getHttpData(Updater.FFmpegAPI)
+	data, err := getHttpData(Updater.FFmpegAPI)
 	if err != nil {
 		log.Println(err)
 		fmt.Println("·FFmpeg API访问失败，正在使用备用API...")
 		for i, API := range Updater.FFmpegCdnAPI {
-			jsonData, err = getHttpData(API + "/tags.json")
+			data, err = getHttpData(API + "/version")
 			if err != nil {
 				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
 				log.Println(err)
 				continue
 			}
 
-			ver, err = getFFmpegLatestVersion(jsonData)
-			if err != nil {
-				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
-				log.Println(err)
-				continue
-			}
+			//ver, err = getFFmpegLatestVersion(jsonData)
+			//if err != nil {
+			//	fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
+			//	log.Println(err)
+			//	continue
+			//}
 		}
 		if err != nil {
 			log.Println(err)
@@ -994,7 +991,8 @@ func main() {
 			os.Exit(985)
 		}
 	} else {
-		ver, err = getFFmpegLatestVersion(jsonData)
+		//ver, err = getFFmpegLatestVersion(jsonData)
+		ver = data
 		if err != nil {
 			log.Println(err)
 			pause()
@@ -1018,9 +1016,9 @@ func main() {
 		fmt.Println("·最新版本:", ver)
 		fmt.Println("────────────────────────────────────────────────────────────────────────────────────────")
 		fmt.Println("·正在尝试加速下载...")
-		fileName := "ffmpeg-" + ver + "-win64-static.7z"
+		fileName := "ffmpeg-release-essentials.7z"//"ffmpeg-" + ver + "-win64-static.7z"
 		for i, API := range Updater.FFmpegCdnAPI {
-			cdnURL := API + "@" + ver + "/" + fileName
+			cdnURL := API + "/dist/" + fileName
 			fmt.Println("·CDN加速地址:\n" + cdnURL)
 			err = downloadFile(cdnURL, "./temp")
 			if err != nil {
@@ -1039,8 +1037,7 @@ func main() {
 			pause()
 			os.Exit(37)
 		} else if exist == false {
-			fileName = "ffmpeg-" + ver + "-win64-shared.zip"
-			originalURL := "https://ffmpeg.zeranoe.com/builds/win64/static/" + fileName
+			originalURL := "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.7z"
 			fmt.Println("·正在从GitHub原地址下载...\n  " + originalURL)
 			err = downloadFile(originalURL, "./temp/")
 			if err != nil {

@@ -375,19 +375,17 @@ type Setting struct {
 
 ///// 全局变量 TODO 修改备份hlae api获取方式 保留一个手动HLAE-Backup仓库
 var Updater = &Setting{
-	Version:       "0.3.8",
+	Version:       "0.3.9",
 	LatestVersion: "",
 	LocalVersion:  "",
 	FFmpegVersion: "",
 	HlaeAPI:       "https://api.github.com/repos/advancedfx/advancedfx/releases/latest",
 	HlaeCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/One-Studio/HLAE-Archive",
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/HLAE-Manual-Archieve",
-		"https://cdn.jsdelivr.net/gh/Purple-CSGO/afx-backup",
+		"https://cdn.jsdelivr.net/gh/One-Studio/HLAE-Archive@master",
 	},
 	FFmpegAPI: "https://www.gyan.dev/ffmpeg/builds/release-version",
 	FFmpegCdnAPI: []string{
-		"https://cdn.jsdelivr.net/gh/One-Studio/FFmpeg-Win64@master/",
+		"https://cdn.jsdelivr.net/gh/One-Studio/FFmpeg-Win64@master",
 	},
 	//Temporary for functions
 	Url:         "",
@@ -663,8 +661,8 @@ func main() {
 	fmt.Println("┏┓ ┏┓┏┓   ┏━━━┓┏━━━┓    ┏┓ ┏┓┏━━━┓┏━━━┓┏━━━┓┏━━━━┓┏━━━┓┏━━━┓    ┏━━━┓    ┏━━━┓    ┏━━━┓")
 	fmt.Println("┃┃ ┃┃┃┃   ┃┏━┓┃┃┏━━┛    ┃┃ ┃┃┃┏━┓┃┗┓┏┓┃┃┏━┓┃┃┏┓┏┓┃┃┏━━┛┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃    ┃┏━┓┃")
 	fmt.Println("┃┗━┛┃┃┃   ┃┃ ┃┃┃┗━━┓    ┃┃ ┃┃┃┗━┛┃ ┃┃┃┃┃┃ ┃┃┗┛┃┃┗┛┃┗━━┓┃┗━┛┃    ┃┃ ┃┃    ┗┛┏┛┃    ┃┗━┛┃")
-	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┃┏━┓┃")
-	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┃┗━┛┃")
+	fmt.Println("┃┏━┓┃┃┃ ┏┓┃┗━┛┃┃┏━━┛    ┃┃ ┃┃┃┏━━┛ ┃┃┃┃┃┗━┛┃  ┃┃  ┃┏━━┛┃┏┓┏┛    ┃┃ ┃┃    ┏┓┗┓┃    ┗━━┓┃")
+	fmt.Println("┃┃ ┃┃┃┗━┛┃┃┏━┓┃┃┗━━┓    ┃┗━┛┃┃┃   ┏┛┗┛┃┃┏━┓┃  ┃┃  ┃┗━━┓┃┃┃┗┓    ┃┗━┛┃ ┏┓ ┃┗━┛┃ ┏┓ ┏━━┛┃")
 	fmt.Println("┗┛ ┗┛┗━━━┛┗┛ ┗┛┗━━━┛    ┗━━━┛┗┛   ┗━━━┛┗┛ ┗┛  ┗┛  ┗━━━┛┗┛┗━┛    ┗━━━┛ ┗┛ ┗━━━┛ ┗┛ ┗━━━┛")
 	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Println("·HLAE+FFmpeg自动安装/更新工具 by Purp1e")
@@ -798,19 +796,22 @@ func main() {
 		log.Println(err)
 		fmt.Println("·HLAE API访问失败，正在使用备用API...")
 		for i, API := range Updater.HlaeCdnAPI {
-			jsonData, err = getHttpData(API + "/release.json")
+			data, err := getHttpData(API + "/version")
 			if err != nil {
 				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
 				log.Println(err)
 				continue
 			}
 
-			tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
-			if err != nil {
-				fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
-				log.Println(err)
-				continue
-			}
+			tagName = data
+			Updater.Url = "https://cdn.jsdelivr.net/gh/One-Studio/HLAE-Archive@master/dist/hlae.zip"
+			Updater.FileName = "hlae.zip"
+			//tagName, Updater.Url, Updater.FileName, err = parseLatestInfo(jsonData)
+			//if err != nil {
+			//	fmt.Println("·第" + strconv.Itoa(i+1) + "个备用API访问失败")
+			//	log.Println(err)
+			//	continue
+			//}
 		}
 		if err != nil {
 			log.Println(err)
@@ -848,7 +849,7 @@ func main() {
 		//hlae不存在或者版本低于最新版时更新
 		fmt.Println("·需要更新HLAE，正在尝试加速下载...")
 		for i, API := range Updater.HlaeCdnAPI {
-			cdnURL := API + "@" + Updater.LatestVersion + "/" + Updater.LatestVersion + "/" + Updater.FileName
+			cdnURL := API + "/dist/hlae.zip"
 			fmt.Println("·CDN加速地址:\n " + cdnURL)
 			err = downloadFile(cdnURL, "./temp")
 			if err != nil {
@@ -861,7 +862,7 @@ func main() {
 		}
 
 		//7.下载成功则进行下一步，否则直接从advancedfx原仓库下载
-		exist, err := isFileExisted("./temp/" + Updater.FileName)
+		exist, err := isFileExisted("./temp/hlae.zip")
 		if err != nil {
 			log.Println(err)
 			pause()
@@ -875,6 +876,8 @@ func main() {
 				pause()
 				os.Exit(9)
 			}
+		} else {
+			Updater.FileName = "hlae.zip"
 		}
 
 		//8.解压到临时目录"./temp/"检查"changelog.xml和"hlae.exe"的正确性，然后移动文件，覆盖原目录
@@ -987,7 +990,7 @@ func main() {
 		}
 		if err != nil {
 			log.Println(err)
-			pause()
+			pause()  
 			os.Exit(985)
 		}
 	} else {
@@ -1031,7 +1034,7 @@ func main() {
 		}
 
 		//检查是否下载成功，否则从原始地址下载
-		exist, err := isFileExisted("./temp/" + fileName)
+		exist, err := isFileExisted("./temp/hlae.zip")
 		if err != nil {
 			log.Println(err)
 			pause()
@@ -1054,6 +1057,8 @@ func main() {
 		_ = os.RemoveAll(tempDir)
 		//TODO 更换7z解压包 现在的包太重了 P.S. 压缩后还好
 		err = decompress("./temp/"+fileName, "./temp/ffmpeg")
+
+		
 		if err != nil {
 			fmt.Println("·解压失败")
 			log.Println(err)
@@ -1066,7 +1071,7 @@ func main() {
 				pause()
 				os.Exit(11)
 			} else if ok == false {
-				ok, err = isFileExisted(tempDir + "/ffmpeg-" + ver + "-win64-static/bin/ffmpeg.exe")
+				ok, err = isFileExisted(tempDir + "/ffmpeg-release-essentials/bin/ffmpeg.exe")
 				if err != nil {
 					log.Println(err)
 					pause()
@@ -1076,7 +1081,7 @@ func main() {
 					pause()
 					os.Exit(12)
 				} else {
-					tempDir = tempDir + "/ffmpeg-" + ver + "-win64-static/"
+					tempDir = tempDir + "/ffmpeg-release-essentials/"
 				}
 
 			}
